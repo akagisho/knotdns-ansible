@@ -1,0 +1,4 @@
+master_ip: 10.200.19.16
+allow_axfr_ips: 10.200.19.0/24
+nginx_allow_ips:
+  - 10.200.19.0/24

@@ -1,0 +1,9 @@
+[local]
+127.0.0.1 ansible_connection=local
+
+[master]
+10.200.19.16
+
+[slave]
+10.200.19.17
+10.200.19.18

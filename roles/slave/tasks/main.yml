@@ -1,0 +1,40 @@
+- name: add apt repository
+  apt_repository: repo="ppa:cz.nic-labs/knot-dns"
+
+- name: install depences
+  apt: pkg={{ item }}
+  with_items:
+    - knot
+
+- name: create slave confs directory
+  file:
+    path=/etc/knot/slave
+    state=directory
+    owner=knot
+    group=knot
+
+- name: copy knot config file
+  template:
+    src=etc/knot/knot.conf.j2
+    dest=/etc/knot/knot.conf
+    owner=knot
+    group=knot
+    mode=0640
+
+- name: reload knot
+  service:
+    name=knot
+    state=reloaded
+
+- name: copy zone_sync.sh
+  template:
+    src=home/dnsops/zone_sync/zone_sync.sh.j2
+    dest=/home/{{ opsuser }}/zone_sync/zone_sync.sh
+    owner={{ opsuser }}
+    mode=0755
+
+- name: add zone_sync.sh to cron
+  cron:
+    name=zone_sync.sh
+    user=root
+    job="setlock -n /tmp/zone_sync.lock /home/{{ opsuser }}/zone_sync/zone_sync.sh"

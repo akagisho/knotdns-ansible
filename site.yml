@@ -1,0 +1,16 @@
+- hosts: local
+  sudo: no
+  roles:
+    - local
+
+- hosts: master
+  sudo: yes
+  roles:
+    - common
+    - master
+
+- hosts: slave
+  sudo: yes
+  roles:
+    - common
+    - slave

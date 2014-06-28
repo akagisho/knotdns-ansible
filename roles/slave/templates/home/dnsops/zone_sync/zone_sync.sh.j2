@@ -1,0 +1,50 @@
+#!/bin/sh
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+MASTER_HOST={{ master_ip }}
+MASTER_USER={{ opsuser }}
+
+set -e
+
+_ADD_ZONE() {
+    ZONE=$1
+    cat > /etc/knot/slave/${ZONE}.conf << __EOM__
+zones {
+  ${ZONE} {
+    file "${ZONE}.zone";
+    xfr-in master;
+    notify-in master;
+    update-in master;
+  }
+}
+__EOM__
+    chown knot:knot /etc/knot/slave/${ZONE}.conf
+}
+
+_DEL_ZONE() {
+    ZONE=$1
+    rm /etc/knot/slave/${ZONE}.conf
+}
+
+DIR=$(cd $(dirname $0); pwd)
+TEMP=$(mktemp $DIR/.slave_zones.txt.XXXXX)
+
+service knot status | grep running > /dev/null
+
+scp -p -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+    -i /home/$MASTER_USER/.ssh/id_rsa \
+    $MASTER_USER@$MASTER_HOST:zone_sync/master_zones.txt $DIR
+
+knotc zonestatus | grep -F type=slave | awk '{print $1}' | sed -e 's/.$//' | sort > $TEMP \
+    && mv $TEMP $DIR/slave_zones.txt
+
+for ZONE in $(diff $DIR/master_zones.txt $DIR/slave_zones.txt | grep '^<' | awk '{print $2}'); do
+    _ADD_ZONE $ZONE
+done
+
+for ZONE in $(diff $DIR/master_zones.txt $DIR/slave_zones.txt | grep '^>' | awk '{print $2}'); do
+    _DEL_ZONE $ZONE
+done
+
+knotc reload > /dev/null
